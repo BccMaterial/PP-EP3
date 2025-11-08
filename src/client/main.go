@@ -18,6 +18,26 @@ var Cyan = "\033[36m"
 var Gray = "\033[37m"
 var White = "\033[97m"
 
+func messageReceiver(conn net.Conn, messages chan string) {
+	scanner := bufio.NewScanner(conn)
+	for scanner.Scan() {
+		messages <- scanner.Text()
+	}
+	close(messages)
+}
+
+// Lida com as mensagens, mantendo o prompt
+func messageHandler(done chan struct{}, messages chan string, prompt string) {
+	for message := range messages {
+		// Limpamos o prompt e repetimos o digite a mensagem. Dessa forma,
+		// o prompt continua aparecendo mesmo recebendo uma mensagem.
+		fmt.Print("\r\033[K")
+		fmt.Println(message)
+		fmt.Print(prompt)
+	}
+	done <- struct{}{}
+}
+
 func main() {
 	prompt := "> "
 	conn, err := net.Dial("tcp", "localhost:3000")
@@ -30,30 +50,11 @@ func main() {
 	done := make(chan struct{})
 	messages := make(chan string)
 
-	// Recebe as mensagens
-	go func() {
-		scanner := bufio.NewScanner(conn)
-		for scanner.Scan() {
-			messages <- scanner.Text()
-		}
-		close(messages)
-	}()
-
-	// Printa as mensagens
-	go func() {
-		for message := range messages {
-			// Limpamos o prompt e repetimos o digite a mensagem. Dessa forma,
-			// o prompt continua aparecendo mesmo recebendo uma mensagem.
-			fmt.Print("\r\033[K")
-			fmt.Println(message)
-			fmt.Print(prompt)
-		}
-		done <- struct{}{}
-	}()
+	go messageReceiver(conn, messages)
+	go messageHandler(done, messages, prompt)
 
 	// Loop principal para enviar mensagens
 	scanner := bufio.NewScanner(os.Stdin)
-
 	for scanner.Scan() {
 		fmt.Print(prompt)
 		message := scanner.Text()
