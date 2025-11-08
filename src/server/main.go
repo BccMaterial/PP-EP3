@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 )
 
 // Cores - Firula pro chat =)
@@ -75,9 +76,19 @@ func handleNewConn(conn net.Conn) {
 	entering <- ch
 
 	input := bufio.NewScanner(conn)
+
+loop:
 	for input.Scan() {
 		text_input := input.Text()
+		first_word := strings.Split(text_input, " ")[0]
+
+		switch first_word {
+		case "/exit":
+			break loop
+		}
+
 		messages <- Cyan + "[" + apelido + "]" + ": " + text_input + Reset + "\n"
+		fmt.Println(Cyan + "[" + apelido + " (" + ip + ")" + "]" + " enviou: " + text_input + Reset)
 	}
 
 	leaving <- ch
