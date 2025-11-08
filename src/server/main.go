@@ -27,7 +27,7 @@ var (
 )
 
 func broadcaster() {
-	// Mapeia os clientes conectador
+	// Mapeia os clientes conectados
 	clients := make(map[client]bool)
 	for {
 		select {
@@ -55,9 +55,19 @@ func handleNewConn(conn net.Conn) {
 	ch := make(chan string)
 	go clientWriter(conn, ch)
 
-	// Endereço é o apelido por padrão
-	// TODO: Solicitar nome na entrada
+	ch <- Yellow + "[Servidor]: Por favor, digite seu apelido: " + Reset
+	nick_input := bufio.NewScanner(conn)
 	apelido := conn.RemoteAddr().String()
+
+	for nick_input.Scan() {
+		apelido = nick_input.Text()
+		if apelido == "" || apelido == " " {
+			ch <- Yellow + "[Servidor]: Por favor, digite um apelido válido: " + Reset
+			continue
+		}
+		break
+	}
+
 	ch <- Yellow + "[Servidor]: Bem vindo, " + apelido + "!" + Reset
 	messages <- Yellow + "[Servidor]: " + apelido + " entrou no chat" + Reset
 	entering <- ch

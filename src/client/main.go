@@ -58,10 +58,6 @@ func main() {
 	for scanner.Scan() {
 		fmt.Print(prompt)
 		message := scanner.Text()
-		if message == "" {
-			continue
-		}
-
 		fmt.Fprintln(conn, message)
 	}
 
