@@ -70,7 +70,7 @@ func handleNewConn(conn net.Conn) {
 		break
 	}
 
-	ch <- Yellow + "[Servidor]: Bem vindo, " + apelido + "!" + Reset + "\n"
+	ch <- Yellow + "[Servidor]: Bem vindo, " + apelido + "! Digite /help para os comandos." + Reset + "\n"
 	messages <- Yellow + "[Servidor]: " + apelido + " entrou no chat" + Reset + "\n"
 	fmt.Println(Green + apelido + " (" + ip + ") " + "entrou" + Reset)
 	entering <- ch
@@ -80,21 +80,38 @@ func handleNewConn(conn net.Conn) {
 loop:
 	for input.Scan() {
 		text_input := input.Text()
-		first_word := strings.Split(text_input, " ")[0]
+		tokens := strings.Split(text_input, " ")
+		first_word := tokens[0]
 
 		switch first_word {
+		case "/help":
+			ch <- Blue + "------ COMANDOS ------" + Reset + "\n"
+			ch <- Blue + "/help: " + "Mostra essa tela" + Reset + "\n"
+			ch <- Blue + "/changenick APELIDO: " + "Altera seu apelido" + Reset + "\n"
+			ch <- Blue + "/exit: " + "Sai do chat" + Reset + "\n"
+		case "/changenick":
+			if len(tokens) < 2 {
+				ch <- Red + "ERRO: /changenick requer um nome. Uso: /changenickname NOME" + Reset + "\n"
+				continue
+			}
+			old_apelido := apelido
+			nickname := tokens[1]
+			apelido = nickname
+			ch <- Green + "Nome alterado com sucesso!" + Reset + "\n"
+			messages <- Blue + "[Servidor]: " + old_apelido + " alterou o apelido para " + apelido + "!" + Reset + "\n"
+			fmt.Println(Blue + "[Servidor]: " + old_apelido + " (" + ip + ") " + "alterou o apelido para " + apelido + Reset)
 		case "/exit":
+			messages <- Yellow + "[Servidor]: " + apelido + " saiu do chat" + Reset + "\n"
+			ch <- Yellow + "[Servidor]: Adeus, volte sempre!" + Reset + "\n"
+			fmt.Println(Red + apelido + " (" + ip + ") " + "saiu" + Reset)
+			leaving <- ch
+			conn.Close()
 			break loop
+		default:
+			messages <- Cyan + "[" + apelido + "]" + ": " + text_input + Reset + "\n"
+			fmt.Println(Cyan + "[" + apelido + " (" + ip + ")" + "]" + " enviou: " + text_input + Reset)
 		}
-
-		messages <- Cyan + "[" + apelido + "]" + ": " + text_input + Reset + "\n"
-		fmt.Println(Cyan + "[" + apelido + " (" + ip + ")" + "]" + " enviou: " + text_input + Reset)
 	}
-
-	leaving <- ch
-	messages <- Yellow + "[Servidor]: " + apelido + " saiu do chat" + Reset + "\n"
-	fmt.Println(Red + apelido + " (" + ip + ") " + "saiu" + Reset)
-	conn.Close()
 }
 
 func main() {
