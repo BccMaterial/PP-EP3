@@ -47,7 +47,7 @@ func broadcaster() {
 
 func clientWriter(conn net.Conn, ch <-chan string) {
 	for msg := range ch {
-		fmt.Fprintln(conn, msg)
+		fmt.Fprint(conn, msg)
 	}
 }
 
@@ -57,7 +57,8 @@ func handleNewConn(conn net.Conn) {
 
 	ch <- Yellow + "[Servidor]: Por favor, digite seu apelido: " + Reset
 	nick_input := bufio.NewScanner(conn)
-	apelido := conn.RemoteAddr().String()
+	ip := conn.RemoteAddr().String()
+	apelido := ip
 
 	for nick_input.Scan() {
 		apelido = nick_input.Text()
@@ -68,17 +69,20 @@ func handleNewConn(conn net.Conn) {
 		break
 	}
 
-	ch <- Yellow + "[Servidor]: Bem vindo, " + apelido + "!" + Reset
-	messages <- Yellow + "[Servidor]: " + apelido + " entrou no chat" + Reset
+	ch <- Yellow + "[Servidor]: Bem vindo, " + apelido + "!" + Reset + "\n"
+	messages <- Yellow + "[Servidor]: " + apelido + " entrou no chat" + Reset + "\n"
+	fmt.Println(Green + apelido + " (" + ip + ") " + "entrou" + Reset)
 	entering <- ch
 
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
-		messages <- Cyan + "[" + apelido + "]" + ": " + input.Text() + Reset
+		text_input := input.Text()
+		messages <- Cyan + "[" + apelido + "]" + ": " + text_input + Reset + "\n"
 	}
 
 	leaving <- ch
-	messages <- Yellow + "[Servidor]: " + apelido + " saiu do chat" + Reset
+	messages <- Yellow + "[Servidor]: " + apelido + " saiu do chat" + Reset + "\n"
+	fmt.Println(Red + apelido + " (" + ip + ") " + "saiu" + Reset)
 	conn.Close()
 }
 
