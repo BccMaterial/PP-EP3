@@ -22,9 +22,10 @@ var White = "\033[97m"
 type client chan<- string // canal de mensagem
 
 var (
-	entering = make(chan client)
-	leaving  = make(chan client)
-	messages = make(chan string)
+	entering     = make(chan client)
+	leaving      = make(chan client)
+	messages     = make(chan string)
+	conn_clients = make(map[string]chan string)
 )
 
 func broadcaster() {
@@ -70,6 +71,7 @@ func handleNewConn(conn net.Conn) {
 		break
 	}
 
+	conn_clients[apelido] = ch
 	ch <- Yellow + "[Servidor]: Bem vindo, " + apelido + "! Digite /help para os comandos." + Reset + "\n"
 	messages <- Yellow + "[Servidor]: " + apelido + " entrou no chat" + Reset + "\n"
 	fmt.Println(Green + apelido + " (" + ip + ") " + "entrou" + Reset)
@@ -84,10 +86,32 @@ loop:
 		first_word := tokens[0]
 
 		switch first_word {
+		case "/msg":
+
+			if len(tokens) > 2 && strings.HasPrefix(tokens[1], "@") {
+				channel_to_send := strings.Replace(tokens[1], "@", "", 1)
+				message := strings.Join(tokens[2:], " ")
+				pv_ch := conn_clients[channel_to_send]
+
+				if pv_ch == nil {
+					ch <- Red + "ERRO: Usuário " + channel_to_send + " não encontrado." + Reset + "\n"
+					continue
+				}
+
+				pv_ch <- Magenta + "[" + apelido + "]: " + message + Reset + "\n"
+				ch <- Magenta + "[" + apelido + "]: " + message + Reset + "\n"
+				fmt.Println(Magenta + "[" + apelido + " (" + ip + ")" + "]" + " enviou uma mensagem privada para " + channel_to_send + Reset)
+				continue
+			}
+
+			message := strings.Join(tokens[1:], " ")
+			messages <- Cyan + "[" + apelido + "]" + ": " + message + Reset + "\n"
+			fmt.Println(Cyan + "[" + apelido + " (" + ip + ")" + "]" + " enviou: " + text_input + Reset)
 		case "/help":
 			ch <- Blue + "------ COMANDOS ------" + Reset + "\n"
 			ch <- Blue + "/help: " + "Mostra essa tela" + Reset + "\n"
 			ch <- Blue + "/changenick APELIDO: " + "Altera seu apelido" + Reset + "\n"
+			ch <- Blue + "/msg [@nick] @msg: " + "Envia uma mensagem, insira o @nick para uma mensagem privada." + Reset + "\n"
 			ch <- Blue + "/exit: " + "Sai do chat" + Reset + "\n"
 		case "/changenick":
 			if len(tokens) < 2 {
@@ -108,8 +132,7 @@ loop:
 			conn.Close()
 			break loop
 		default:
-			messages <- Cyan + "[" + apelido + "]" + ": " + text_input + Reset + "\n"
-			fmt.Println(Cyan + "[" + apelido + " (" + ip + ")" + "]" + " enviou: " + text_input + Reset)
+			ch <- Red + "ERRO: Insira um comando válido (/help lista os comandos)" + Reset + "\n"
 		}
 	}
 }
